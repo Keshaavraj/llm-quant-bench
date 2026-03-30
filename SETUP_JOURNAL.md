@@ -83,16 +83,62 @@ Think of CMake as a foreman who reads blueprints and tells workers what to build
 
 ---
 
-### Configure the build
+### Install CUDA Toolkit
+
+```bash
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt update
+sudo apt install -y cuda-toolkit-12-6
+```
+
+**Why:** CUDA is NVIDIA's platform that lets software use the GPU for general computing.
+Two components exist — the driver (ships with the GPU, already present) and the toolkit
+(compiler + libraries, must be installed separately).
+
+- `cuda-keyring` — tells Ubuntu to trust NVIDIA's package server
+- `apt update` — refreshes package list to include NVIDIA's repo
+- `cuda-toolkit-12-6` — installs `nvcc` (CUDA compiler), `libcudart`, `libcublas`
+  (GPU matrix math — the core of LLM inference)
+
+Without this, cmake cannot compile GPU code even if the GPU is physically present.
+
+---
+
+### Add CUDA to PATH
+
+```bash
+echo 'export PATH=/usr/local/cuda/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Why:**
+- `PATH` — tells Linux where to find the `nvcc` command when you type it in the terminal
+- `LD_LIBRARY_PATH` — tells Linux where to find CUDA `.so` runtime libraries when programs run
+- `source ~/.bashrc` — applies changes immediately without reopening the terminal
+
+**Verify toolkit is found:**
+```bash
+nvcc --version
+# output: nvcc release 12.6 ...
+```
+
+---
+
+### Configure the build with GPU support
 ```bash
 cd ~/llm-quant-bench/llama.cpp
-cmake -B Build
+cmake -B Build -DGGML_CUDA=ON
 ```
 **Why:** This is the "configure" step. CMake scans your system and prepares build files.
-Output showed:
-- OpenMP found → parallel CPU inference enabled (uses multiple cores)
-- OpenSSL missing → no HTTPS support, but doesn't affect inference
-- x86 detected → will use AVX2 optimized CPU math instructions
+- `-DGGML_CUDA=ON` — the key flag. Tells cmake to compile GPU kernels using `nvcc`.
+  Without this flag, llama.cpp runs on CPU only even if the GPU and CUDA toolkit are present.
+
+Output shows:
+- CUDA found → GPU kernels will be compiled
+- `nvcc` detected at `/usr/local/cuda/bin/nvcc`
+- RTX 500 Ada detected
 
 ---
 
@@ -103,6 +149,7 @@ cmake --build Build -j$(nproc)
 **Why:** Actually compiles all C++ source files into executables.
 - `--build Build` — compile what CMake configured in the Build folder
 - `-j$(nproc)` — use all CPU cores in parallel (`nproc` = 22 on this machine)
+- Both GCC (CPU parts) and `nvcc` (GPU kernel parts) compile together
 
 **Output:** Two executables created:
 - `Build/bin/llama-cli` — command line tool to run models
@@ -118,6 +165,34 @@ cmake --build Build -j$(nproc)
 - `abf9a6216` — exact git commit hash of the code compiled
 - `GNU 13.3.0` — GCC compiler version used
 - `Linux x86_64` — 64-bit x86 CPU architecture
+
+---
+
+### Run first inference on GPU
+
+```bash
+cd ~/llm-quant-bench
+./llama.cpp/Build/bin/llama-cli \
+  -m models/Llama-3.2-3B-Instruct-Q4_K_M.gguf \
+  -ngl 99 \
+  -p "What is quantization in LLMs?" \
+  -n 200
+```
+
+**Why each flag:**
+- `-m` — path to the model file to load
+- `-ngl 99` — number of GPU layers to offload. Llama 3.2 3B has 28 layers total.
+  Setting 99 means "move everything possible to VRAM" — all 28 layers go to GPU.
+  Without this flag, the model stays on CPU even with a GPU-enabled binary.
+- `-p` — input prompt sent to the model
+- `-n 200` — generate up to 200 tokens of response (~150 words)
+
+**Verify GPU is active (open a second terminal while inference runs):**
+```bash
+nvidia-smi
+# Memory-Usage: ~2000MiB / 4094MiB  ← model loaded in VRAM
+# GPU-Util:      80-100%             ← GPU actively computing
+```
 
 ---
 
