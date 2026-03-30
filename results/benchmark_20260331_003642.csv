@@ -1,0 +1,2 @@
+model,backend,load_time_ms,ttft_ms,tokens_per_sec,peak_vram_mb,runs,status,note
+Mistral-7B-Instruct-v0.3-Q4_K_M.gguf,gguf,,,,,0,OOM,"model is ~4.1 GB, exceeds 4 GB VRAM (KV cache adds overhead)"
