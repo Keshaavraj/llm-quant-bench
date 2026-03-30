@@ -1,0 +1,6 @@
+llama.cpp/
+models/
+logs/
+__pycache__/
+*.pyc
+.env
