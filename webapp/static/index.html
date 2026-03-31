@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLM Quant Bench</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0f1117;
+    --surface: #1a1d2e;
+    --card:    #21253a;
+    --border:  #2e3350;
+    --accent:  #6c8ef5;
+    --green:   #4ade80;
+    --yellow:  #facc15;
+    --red:     #f87171;
+    --text:    #e2e8f0;
+    --muted:   #8892b0;
+    --gguf:    #4c9be8;
+    --bnb:     #e8834c;
+    --awq:     #6dbe6d;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1 { font-size: 1.4rem; font-weight: 700; color: var(--accent); letter-spacing: 0.5px; }
+  header h1 span { color: var(--text); font-weight: 400; }
+  .hw-badge {
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .hw-badge span {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ── Main layout ── */
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  section { margin-bottom: 32px; }
+  section h2 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* ── Model cards ── */
+  .model-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .model-card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    position: relative;
+  }
+  .model-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .model-card.selected { border-color: var(--accent); background: #1e2540; }
+  .model-card.unavailable { opacity: 0.4; cursor: not-allowed; }
+  .model-card .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-gguf  { background: rgba(76,155,232,0.2); color: var(--gguf); }
+  .badge-bnb   { background: rgba(232,131,76,0.2); color: var(--bnb); }
+  .badge-awq   { background: rgba(109,190,109,0.2); color: var(--awq); }
+  .model-card .name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+
+  /* ── Prompt area ── */
+  .prompt-row { display: flex; gap: 12px; align-items: flex-end; }
+  textarea {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 12px 14px;
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+
+  .controls { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .token-row { display: flex; align-items: center; gap: 8px; }
+  .token-row label { font-size: 12px; color: var(--muted); }
+  .token-row input {
+    width: 70px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 5px 8px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  #run-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  #run-btn:hover { opacity: 0.88; }
+  #run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Output ── */
+  .output-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    min-height: 120px;
+    position: relative;
+  }
+  #output-text {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13.5px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+    min-height: 60px;
+  }
+  #output-text .placeholder { color: var(--muted); font-style: italic; font-family: inherit; }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    min-height: 20px;
+  }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Metrics cards ── */
+  .metrics-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    min-width: 110px;
+    text-align: center;
+  }
+  .metric-card .val {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .metric-card .lbl {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+  }
+
+  /* ── History table ── */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--card); }
+  .tps-val { color: var(--green); font-weight: 600; }
+  .empty-row td { color: var(--muted); font-style: italic; text-align: center; padding: 24px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>LLM Quant<span>Bench</span></h1>
+  <div class="hw-badge">
+    <span>RTX 500 Ada · 4GB VRAM</span>
+    <span>Intel Core Ultra 7 165H</span>
+    <span>CUDA 12.6 · WSL2</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- Model selector -->
+  <section>
+    <h2>Select Model</h2>
+    <div class="model-grid" id="model-grid">
+      <div style="color:var(--muted);font-size:13px;">Loading models…</div>
+    </div>
+  </section>
+
+  <!-- Prompt -->
+  <section>
+    <h2>Prompt</h2>
+    <div class="prompt-row">
+      <textarea id="prompt" rows="3">Explain the difference between quantization and pruning in large language models. What are the trade-offs of each approach?</textarea>
+      <div class="controls">
+        <div class="token-row">
+          <label>Max tokens</label>
+          <input type="number" id="n-tokens" value="200" min="10" max="500" />
+        </div>
+        <button id="run-btn" disabled>Run ▶</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Output -->
+  <section>
+    <h2>Output</h2>
+    <div class="output-box">
+      <div class="status-bar">
+        <div class="spinner" id="spinner"></div>
+        <span id="status-text">Select a model and click Run</span>
+      </div>
+      <div id="output-text"><span class="placeholder">Response will appear here…</span></div>
+      <div class="metrics-row" id="metrics-row"></div>
+    </div>
+  </section>
+
+  <!-- History -->
+  <section>
+    <h2>Run History</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Backend</th>
+            <th>Tok/s</th>
+            <th>VRAM (MB)</th>
+            <th>TTFT (ms)</th>
+            <th>Load (ms)</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr class="empty-row"><td colspan="7">No runs yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  let selectedModel = null;
+  const history     = [];
+
+  // ── Load model list ──────────────────────────────────────────────────────
+  async function loadModels() {
+    const res    = await fetch("/api/models");
+    const models = await res.json();
+    const grid   = document.getElementById("model-grid");
+    grid.innerHTML = "";
+
+    const backendLabel = { gguf: "GGUF", bitsandbytes: "INT4 NF4", awq: "AWQ" };
+    const backendClass = { gguf: "gguf", bitsandbytes: "bnb", awq: "awq" };
+
+    models.forEach(m => {
+      const card = document.createElement("div");
+      card.className = "model-card" + (m.available ? "" : " unavailable");
+      card.dataset.id = m.id;
+      card.innerHTML = `
+        <div class="badge badge-${backendClass[m.backend]}">${backendLabel[m.backend]}</div>
+        <div class="name">${m.name}</div>
+      `;
+      if (m.available) {
+        card.addEventListener("click", () => selectModel(m, card));
+      }
+      grid.appendChild(card);
+    });
+  }
+
+  function selectModel(m, card) {
+    document.querySelectorAll(".model-card").forEach(c => c.classList.remove("selected"));
+    card.classList.add("selected");
+    selectedModel = m;
+    document.getElementById("run-btn").disabled = false;
+    document.getElementById("status-text").textContent = `Selected: ${m.name}`;
+  }
+
+  // ── Run inference ─────────────────────────────────────────────────────────
+  document.getElementById("run-btn").addEventListener("click", runInference);
+
+  async function runInference() {
+    if (!selectedModel) return;
+
+    const prompt  = document.getElementById("prompt").value.trim();
+    const nTokens = parseInt(document.getElementById("n-tokens").value);
+    if (!prompt) return;
+
+    // Reset UI
+    const outputEl  = document.getElementById("output-text");
+    const metricsEl = document.getElementById("metrics-row");
+    const spinner   = document.getElementById("spinner");
+    const statusEl  = document.getElementById("status-text");
+    const runBtn    = document.getElementById("run-btn");
+
+    outputEl.innerHTML  = "";
+    metricsEl.innerHTML = "";
+    spinner.style.display = "block";
+    runBtn.disabled     = true;
+    statusEl.textContent = `Loading ${selectedModel.name}…`;
+
+    let firstToken = true;
+    const startTime = Date.now();
+
+    try {
+      const res = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model_id: selectedModel.id, prompt, n_tokens: nTokens }),
+      });
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buf     = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const evt = JSON.parse(line.slice(6));
+
+          if (evt.type === "token") {
+            if (firstToken) {
+              statusEl.textContent = `Generating…`;
+              firstToken = false;
+            }
+            outputEl.textContent += evt.data;
+            outputEl.scrollIntoView({ block: "nearest" });
+          }
+
+          else if (evt.type === "metrics") {
+            const m = evt.data;
+            renderMetrics(m);
+            addHistory(selectedModel, m);
+          }
+
+          else if (evt.type === "error") {
+            outputEl.textContent = "Error: " + evt.data.message;
+          }
+
+          else if (evt.type === "done") {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            statusEl.textContent = `Done in ${elapsed}s`;
+            spinner.style.display = "none";
+            runBtn.disabled = false;
+          }
+        }
+      }
+    } catch (err) {
+      outputEl.textContent = "Request failed: " + err.message;
+      spinner.style.display = "none";
+      runBtn.disabled = false;
+      statusEl.textContent = "Error";
+    }
+  }
+
+  // ── Render metrics cards ──────────────────────────────────────────────────
+  function renderMetrics(m) {
+    const el = document.getElementById("metrics-row");
+    const fmt = (v, unit) => v != null ? `${v}${unit}` : "—";
+    el.innerHTML = `
+      <div class="metric-card"><div class="val">${fmt(m.tps, "")}</div><div class="lbl">Tok / sec</div></div>
+      <div class="metric-card"><div class="val">${fmt(m.vram_mb, "")}</div><div class="lbl">VRAM MB</div></div>
+      <div class="metric-card"><div class="val">${fmt(m.ttft_ms, "")}</div><div class="lbl">TTFT ms</div></div>
+      <div class="metric-card"><div class="val">${fmt(m.load_time_ms, "")}</div><div class="lbl">Load ms</div></div>
+      <div class="metric-card"><div class="val" style="font-size:0.9rem;color:var(--muted)">${m.backend}</div><div class="lbl">Backend</div></div>
+    `;
+  }
+
+  // ── History table ─────────────────────────────────────────────────────────
+  function addHistory(model, metrics) {
+    history.unshift({ model, metrics, time: new Date().toLocaleTimeString() });
+    const tbody = document.getElementById("history-body");
+    tbody.innerHTML = history.map(r => `
+      <tr>
+        <td>${r.model.name}</td>
+        <td>${r.metrics.backend}</td>
+        <td class="tps-val">${r.metrics.tps ?? "—"}</td>
+        <td>${r.metrics.vram_mb ?? "—"}</td>
+        <td>${r.metrics.ttft_ms ?? "—"}</td>
+        <td>${r.metrics.load_time_ms ?? "—"}</td>
+        <td>${r.time}</td>
+      </tr>
+    `).join("");
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  loadModels();
+</script>
+</body>
+</html>
