@@ -1,6 +1,7 @@
 llama.cpp/
 models/
 logs/
+venv/
 __pycache__/
 *.pyc
 .env

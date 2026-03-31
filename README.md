@@ -10,19 +10,19 @@
 
 ### GGUF (llama.cpp) — SmolLM2-135M-Instruct
 
-| Format | Bits/weight | Tok/s | VRAM (MB) | Notes |
-|--------|-------------|-------|-----------|-------|
-| Q4_K_M | ~4.5 | **347.4** | 473 | Fastest model in benchmark |
-| Q8_0   | ~8.0 | 324.7 | 511 | Near-lossless, still extremely fast |
+| Format | Bits/weight | Tok/s | VRAM (MB) | ROUGE-L | Judge /10 | Notes |
+|--------|-------------|-------|-----------|---------|-----------|-------|
+| Q4_K_M | ~4.5 | **347.4** | 473 | 0.204 | 5.3 | Fastest model in benchmark |
+| Q8_0   | ~8.0 | 324.7 | 511 | 0.208 | 5.5 | Near-lossless, still extremely fast |
 
 ### GGUF (llama.cpp) — Llama-3.2-3B-Instruct
 
-| Format | Bits/weight | Tok/s | VRAM (MB) | Notes |
-|--------|-------------|-------|-----------|-------|
-| Q3_K_L | ~3.4 | 33.2 | 2515 | Most compressed |
-| Q4_K_M | ~4.5 | 35.7 | 2711 | Sweet spot — best speed/quality balance |
-| Q5_K_M | ~5.5 | **37.0** | 2999 | Fastest among 3B |
-| Q8_0   | ~8.0 | 25.6 | 3828 | Near-lossless quality |
+| Format | Bits/weight | Tok/s | VRAM (MB) | ROUGE-L | Judge /10 | Notes |
+|--------|-------------|-------|-----------|---------|-----------|-------|
+| Q3_K_L | ~3.4 | 33.2 | 2515 | 0.262 | 9.2 | Most compressed |
+| Q4_K_M | ~4.5 | 35.7 | 2711 | 0.273 | **9.3** | Sweet spot — best speed/quality balance |
+| Q5_K_M | ~5.5 | **37.0** | 2999 | 0.258 | **9.3** | Fastest among 3B |
+| Q8_0   | ~8.0 | 25.6 | 3828 | 0.259 | 9.2 | Near-lossless quality |
 
 ### Cross-Backend Comparison — Llama-3.2-3B-Instruct @ INT4
 
@@ -34,10 +34,10 @@
 
 ### Mistral-7B-Instruct-v0.3 (GGUF only)
 
-| Format | Tok/s | VRAM (MB) | Notes |
-|--------|-------|-----------|-------|
-| Q3_K_M | 7.9 | 3845 | Barely fits in 4GB |
-| Q4_K_M | OOM | — | 4.1GB model + KV cache exceeds 4GB VRAM |
+| Format | Tok/s | VRAM (MB) | ROUGE-L | Judge /10 | Notes |
+|--------|-------|-----------|---------|-----------|-------|
+| Q3_K_M | 7.9 | 3845 | 0.280 | **9.3** | Barely fits in 4GB |
+| Q4_K_M | OOM | — | — | — | 4.1GB model + KV cache exceeds 4GB VRAM |
 
 ---
 
@@ -45,19 +45,31 @@
 
 **Throughput Comparison — tok/s across all models and backends**
 
-<img src="results/plots/throughput_comparison.png" alt="Throughput Comparison" width="100%"/>
+![Throughput Comparison](results/plots/throughput_comparison.png)
 
 ---
 
 **VRAM Usage — peak memory with 4GB hardware limit marked**
 
-<img src="results/plots/vram_comparison.png" alt="VRAM Comparison" width="100%"/>
+![VRAM Comparison](results/plots/vram_comparison.png)
 
 ---
 
 **Efficiency Frontier — throughput vs VRAM trade-off (top-left = best)**
 
-<img src="results/plots/throughput_vs_vram.png" alt="Efficiency Frontier" width="100%"/>
+![Efficiency Frontier](results/plots/throughput_vs_vram.png)
+
+---
+
+**Quality Comparison — ROUGE-L and Judge score across all models**
+
+![Quality Comparison](results/plots/quality_comparison.png)
+
+---
+
+**Speed vs Quality — throughput vs judge score scatter**
+
+![Speed vs Quality](results/plots/speed_vs_quality.png)
 
 ---
 
@@ -154,6 +166,55 @@ Q4_K_M (4.1GB + KV cache overhead) exceeded VRAM entirely. 3B is the practical u
 
 ### 6. AWQ quality degraded without its CUDA extension
 AutoAWQ ran at 5.0 tok/s and scored 0.144 ROUGE-L / 7.9 judge — lower quality than GGUF Q4_K_M (0.273 / 9.3) despite the same underlying model. This is because `awq_ext` optimized CUDA kernels failed to install, disabling layer fusion and forcing a slow fallback path. In production deployments using vLLM, AWQ with proper kernels is competitive with GGUF in both speed and quality. AutoAWQ itself is now deprecated — see Ecosystem section below.
+
+---
+
+## Conclusions & Recommendations
+
+### Overall Ranking (4GB VRAM Hardware)
+
+| Rank | Model | Tok/s | VRAM | Judge | Best For |
+|------|-------|-------|------|-------|----------|
+| 🥇 1 | Llama-3B Q4_K_M (GGUF) | 35.7 | 2711 MB | 9.3/10 | Best all-rounder — speed + quality + VRAM balance |
+| 🥈 2 | Llama-3B Q5_K_M (GGUF) | 37.0 | 2999 MB | 9.3/10 | Highest throughput with no quality loss vs Q4 |
+| 🥉 3 | Mistral-7B Q3_K_M (GGUF) | 7.9 | 3845 MB | 9.3/10 | Best quality overall — use only if speed is not a constraint |
+| 4 | Llama-3B Q8_0 (GGUF) | 25.6 | 3828 MB | 9.2/10 | Near-lossless quality; too much VRAM gain for tiny quality gain |
+| 5 | Llama-3B Q3_K_L (GGUF) | 33.2 | 2515 MB | 9.2/10 | Most VRAM-efficient 3B; quality holds up surprisingly well |
+| 6 | Llama-3B INT4 NF4 (bitsandbytes) | 12.2 | 2361 MB | 8.6/10 | Lowest VRAM of any Llama-3B; use for fine-tuning (QLoRA) not inference |
+| 7 | SmolLM2-135M Q8_0 (GGUF) | 324.7 | 511 MB | 5.5/10 | Ultra-low latency; autocomplete, classification, simple tasks only |
+| 8 | SmolLM2-135M Q4_K_M (GGUF) | 347.4 | 473 MB | 5.3/10 | Fastest of all; trivial quality tasks, edge devices, real-time streaming |
+| 9 | Llama-3B AWQ INT4 | 5.0 | 3027 MB | 7.9/10 | Avoid on this hardware — slow + quality degraded due to missing CUDA kernel |
+
+---
+
+### Pick by Use Case
+
+**"I need maximum quality and don't care about speed"**
+> **Mistral-7B Q3_K_M** — highest judge score (9.3) and ROUGE-L (0.280). Slow at 7.9 tok/s but the best answers. Only viable on 4GB because Q3 compression; Q4+ is OOM.
+
+**"I need the best balance of speed and quality for a chat application"**
+> **Llama-3B Q4_K_M** — 35.7 tok/s, 9.3/10 quality, 2711 MB VRAM. Loads in under 1 second. The default choice for on-device LLM apps.
+
+**"I need maximum throughput for batch processing"**
+> **Llama-3B Q5_K_M** — 37.0 tok/s (fastest 3B), same quality as Q4, costs only 288 MB more VRAM. Wins on pure throughput.
+
+**"VRAM is extremely tight (< 2.5GB available)"**
+> **Llama-3B Q3_K_L** — fits in 2515 MB with 9.2/10 quality. Impressive compression; only 0.1 judge points below Q4 at 200 MB less.
+
+**"I need to fine-tune the model (QLoRA)"**
+> **Llama-3B INT4 NF4 (bitsandbytes)** — this is what bitsandbytes is designed for. Lowest VRAM (2361 MB), compatible with PEFT/LoRA training. Not the best for inference.
+
+**"I need real-time token streaming, < 5ms response feel, edge device"**
+> **SmolLM2-135M Q4_K_M** — 347.4 tok/s, 473 MB VRAM. 25× faster than Llama-3B. Quality is limited (5.3/10) but acceptable for autocomplete, intent classification, short-form tasks.
+
+**"Should I use AWQ on this hardware?"**
+> **No.** Without the `awq_ext` CUDA kernel, AutoAWQ runs slower (5.0 tok/s) and produces lower quality (7.9/10) than GGUF Q4_K_M (35.7 tok/s, 9.3/10). AWQ belongs in production vLLM deployments on A10G/A100 GPUs.
+
+---
+
+### Key Takeaway
+
+> **For 4GB consumer GPU inference: GGUF Q4_K_M via llama.cpp is the optimal format in almost every scenario.** It delivers 3× the throughput of bitsandbytes, 7× the throughput of AWQ, and matches or exceeds both in output quality — all while loading in under 1 second. The only reason to choose another format on this hardware is fine-tuning (bitsandbytes) or ultra-low latency trivial tasks (SmolLM2 GGUF).
 
 ---
 
