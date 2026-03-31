@@ -37,6 +37,7 @@ import subprocess
 import sys
 import termios
 import time
+import threading
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -146,16 +147,18 @@ ALL_TASKS = {
     "summarization": SUMMARIZATION_TASKS,
 }
 
-# ── GGUF models to evaluate ───────────────────────────────────────────────────
+# ── Models to evaluate ───────────────────────────────────────────────────────
 
 EVAL_MODELS = [
-    {"name": "SmolLM2-135M-Q4_K_M", "file": "SmolLM2-135M-Instruct-Q4_K_M.gguf"},
-    {"name": "SmolLM2-135M-Q8_0",   "file": "SmolLM2-135M-Instruct-Q8_0.gguf"},
-    {"name": "Llama-3B-Q3_K_L",     "file": "Llama-3.2-3B-Instruct-Q3_K_L.gguf"},
-    {"name": "Llama-3B-Q4_K_M",     "file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf"},
-    {"name": "Llama-3B-Q5_K_M",     "file": "Llama-3.2-3B-Instruct-Q5_K_M.gguf"},
-    {"name": "Llama-3B-Q8_0",       "file": "Llama-3.2-3B-Instruct-Q8_0.gguf"},
-    {"name": "Mistral-7B-Q3_K_M",   "file": "Mistral-7B-Instruct-v0.3-Q3_K_M.gguf"},
+    {"name": "SmolLM2-135M-Q4_K_M", "backend": "gguf", "file": "SmolLM2-135M-Instruct-Q4_K_M.gguf"},
+    {"name": "SmolLM2-135M-Q8_0",   "backend": "gguf", "file": "SmolLM2-135M-Instruct-Q8_0.gguf"},
+    {"name": "Llama-3B-Q3_K_L",     "backend": "gguf", "file": "Llama-3.2-3B-Instruct-Q3_K_L.gguf"},
+    {"name": "Llama-3B-Q4_K_M",     "backend": "gguf", "file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf"},
+    {"name": "Llama-3B-Q5_K_M",     "backend": "gguf", "file": "Llama-3.2-3B-Instruct-Q5_K_M.gguf"},
+    {"name": "Llama-3B-Q8_0",       "backend": "gguf", "file": "Llama-3.2-3B-Instruct-Q8_0.gguf"},
+    {"name": "Mistral-7B-Q3_K_M",   "backend": "gguf", "file": "Mistral-7B-Instruct-v0.3-Q3_K_M.gguf"},
+    {"name": "Llama-3B-INT4-NF4",   "backend": "int4", "dir": "Llama-3.2-3B-Instruct-HF"},
+    {"name": "Llama-3B-AWQ-INT4",   "backend": "awq",  "dir": "Llama-3.2-3B-Instruct-AWQ"},
 ]
 
 
@@ -239,6 +242,104 @@ def run_inference(model_path: Path, prompt: str, n_tokens: int = 256) -> str:
     return after_prompt
 
 
+# ── INT4 NF4 inference (bitsandbytes) ────────────────────────────────────────
+
+# Cache to avoid reloading the same HF model between tasks
+_hf_cache = {"id": None, "model": None, "tokenizer": None}
+_hf_lock  = threading.Lock()
+
+def run_inference_int4(model_dir: Path, prompt: str, n_tokens: int = 256) -> str:
+    """Run bitsandbytes NF4 inference and return generated text."""
+    import torch
+    from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+
+    cache_key = f"int4:{model_dir}"
+    with _hf_lock:
+        if _hf_cache["id"] != cache_key:
+            # Unload previous model
+            if _hf_cache["model"] is not None:
+                del _hf_cache["model"]
+                del _hf_cache["tokenizer"]
+                _hf_cache["model"]     = None
+                _hf_cache["tokenizer"] = None
+                _hf_cache["id"]        = None
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                    torch.cuda.empty_cache()
+
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_compute_dtype=torch.float16,
+            )
+            tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+            model = AutoModelForCausalLM.from_pretrained(
+                str(model_dir),
+                quantization_config=bnb_config,
+                device_map="cuda",
+            )
+            _hf_cache["id"]        = cache_key
+            _hf_cache["model"]     = model
+            _hf_cache["tokenizer"] = tokenizer
+
+        model     = _hf_cache["model"]
+        tokenizer = _hf_cache["tokenizer"]
+
+    import torch
+    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+    with torch.no_grad():
+        out = model.generate(
+            **inputs, max_new_tokens=n_tokens,
+            do_sample=False, pad_token_id=tokenizer.eos_token_id,
+        )
+    new_tokens = out[0][inputs["input_ids"].shape[1]:]
+    return tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+
+# ── AWQ inference ─────────────────────────────────────────────────────────────
+
+def run_inference_awq(model_dir: Path, prompt: str, n_tokens: int = 256) -> str:
+    """Run AutoAWQ inference and return generated text."""
+    import torch
+    from awq import AutoAWQForCausalLM
+    from transformers import AutoTokenizer
+
+    cache_key = f"awq:{model_dir}"
+    with _hf_lock:
+        if _hf_cache["id"] != cache_key:
+            if _hf_cache["model"] is not None:
+                del _hf_cache["model"]
+                del _hf_cache["tokenizer"]
+                _hf_cache["model"]     = None
+                _hf_cache["tokenizer"] = None
+                _hf_cache["id"]        = None
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                    torch.cuda.empty_cache()
+
+            tokenizer = AutoTokenizer.from_pretrained(str(model_dir))
+            model = AutoAWQForCausalLM.from_quantized(
+                str(model_dir), fuse_layers=False, device_map="auto"
+            )
+            _hf_cache["id"]        = cache_key
+            _hf_cache["model"]     = model
+            _hf_cache["tokenizer"] = tokenizer
+
+        model     = _hf_cache["model"]
+        tokenizer = _hf_cache["tokenizer"]
+
+    import torch
+    inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+    with torch.no_grad():
+        out = model.generate(
+            **inputs, max_new_tokens=n_tokens,
+            do_sample=False, pad_token_id=tokenizer.eos_token_id,
+        )
+    new_tokens = out[0][inputs["input_ids"].shape[1]:]
+    return tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+
 # ── ROUGE-L scoring ───────────────────────────────────────────────────────────
 
 _scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
@@ -314,10 +415,18 @@ def llm_judge(prompt: str, response: str) -> dict | None:
 # ── Main evaluation loop ──────────────────────────────────────────────────────
 
 def evaluate_model(model_cfg: dict, task_types: list, use_judge: bool) -> list:
-    model_path = MODELS_DIR / model_cfg["file"]
-    if not model_path.exists():
-        console.print(f"  [red]File not found: {model_cfg['file']}[/red]")
-        return []
+    backend = model_cfg.get("backend", "gguf")
+
+    if backend == "gguf":
+        model_path = MODELS_DIR / model_cfg["file"]
+        if not model_path.exists():
+            console.print(f"  [red]File not found: {model_cfg['file']}[/red]")
+            return []
+    else:
+        model_path = MODELS_DIR / model_cfg["dir"]
+        if not model_path.exists():
+            console.print(f"  [red]Directory not found: {model_cfg['dir']}[/red]")
+            return []
 
     results = []
 
@@ -330,7 +439,14 @@ def evaluate_model(model_cfg: dict, task_types: list, use_judge: bool) -> list:
             console.print(f"    [{task_type}] {task['id']} ...", end=" ")
             sys.stdout.flush()
 
-            output = run_inference(model_path, task["prompt"])
+            if backend == "gguf":
+                output = run_inference(model_path, task["prompt"])
+            elif backend == "int4":
+                output = run_inference_int4(model_path, task["prompt"])
+            elif backend == "awq":
+                output = run_inference_awq(model_path, task["prompt"])
+            else:
+                output = ""
             rouge  = compute_rouge_l(output, task["reference"])
             rouge_scores.append(rouge)
 

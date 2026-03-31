@@ -44,13 +44,15 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), na
 # ── Model registry ────────────────────────────────────────────────────────────
 
 MODELS = [
-    {"id": "gguf-q3",  "name": "Llama-3B Q3_K_L",   "backend": "gguf",           "file": "Llama-3.2-3B-Instruct-Q3_K_L.gguf"},
-    {"id": "gguf-q4",  "name": "Llama-3B Q4_K_M",   "backend": "gguf",           "file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf"},
-    {"id": "gguf-q5",  "name": "Llama-3B Q5_K_M",   "backend": "gguf",           "file": "Llama-3.2-3B-Instruct-Q5_K_M.gguf"},
-    {"id": "gguf-q8",  "name": "Llama-3B Q8_0",     "backend": "gguf",           "file": "Llama-3.2-3B-Instruct-Q8_0.gguf"},
-    {"id": "gguf-m7",  "name": "Mistral-7B Q3_K_M", "backend": "gguf",           "file": "Mistral-7B-Instruct-v0.3-Q3_K_M.gguf"},
-    {"id": "int4-nf4", "name": "Llama-3B INT4 NF4",  "backend": "bitsandbytes",  "dir":  "Llama-3.2-3B-Instruct-HF"},
-    {"id": "awq-int4", "name": "Llama-3B AWQ INT4",  "backend": "awq",           "dir":  "Llama-3.2-3B-Instruct-AWQ"},
+    {"id": "smol-q4",  "name": "SmolLM2-135M Q4_K_M", "backend": "gguf",         "file": "SmolLM2-135M-Instruct-Q4_K_M.gguf", "bench_tps": 347.4, "bench_vram": 473,  "rouge_l": 0.204, "judge_avg": 5.3},
+    {"id": "smol-q8",  "name": "SmolLM2-135M Q8_0",   "backend": "gguf",         "file": "SmolLM2-135M-Instruct-Q8_0.gguf",   "bench_tps": 324.7, "bench_vram": 511,  "rouge_l": 0.208, "judge_avg": 5.5},
+    {"id": "gguf-q3",  "name": "Llama-3B Q3_K_L",     "backend": "gguf",         "file": "Llama-3.2-3B-Instruct-Q3_K_L.gguf", "bench_tps": 33.2,  "bench_vram": 2515, "rouge_l": 0.262, "judge_avg": 9.2},
+    {"id": "gguf-q4",  "name": "Llama-3B Q4_K_M",     "backend": "gguf",         "file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf", "bench_tps": 35.7,  "bench_vram": 2711, "rouge_l": 0.273, "judge_avg": 9.3},
+    {"id": "gguf-q5",  "name": "Llama-3B Q5_K_M",     "backend": "gguf",         "file": "Llama-3.2-3B-Instruct-Q5_K_M.gguf",        "bench_tps": 37.0,  "bench_vram": 2999, "rouge_l": 0.258, "judge_avg": 9.3},
+    {"id": "gguf-q8",  "name": "Llama-3B Q8_0",       "backend": "gguf",         "file": "Llama-3.2-3B-Instruct-Q8_0.gguf",           "bench_tps": 25.6,  "bench_vram": 3828, "rouge_l": 0.259, "judge_avg": 9.2},
+    {"id": "gguf-m7",  "name": "Mistral-7B Q3_K_M",   "backend": "gguf",         "file": "Mistral-7B-Instruct-v0.3-Q3_K_M.gguf",      "bench_tps": 7.9,   "bench_vram": 3845, "rouge_l": 0.280, "judge_avg": 9.3},
+    {"id": "int4-nf4", "name": "Llama-3B INT4 NF4",   "backend": "bitsandbytes", "dir":  "Llama-3.2-3B-Instruct-HF",                  "bench_tps": 12.2,  "bench_vram": 2361, "rouge_l": 0.190, "judge_avg": 8.6},
+    {"id": "awq-int4", "name": "Llama-3B AWQ INT4",   "backend": "awq",          "dir":  "Llama-3.2-3B-Instruct-AWQ",                 "bench_tps": 5.0,   "bench_vram": 3027, "rouge_l": 0.144, "judge_avg": 7.9},
 ]
 
 # ── Cached HF model (avoid reloading same model) ──────────────────────────────

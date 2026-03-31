@@ -26,11 +26,11 @@
 
 ### Cross-Backend Comparison — Llama-3.2-3B-Instruct @ INT4
 
-| Backend | Tok/s | VRAM (MB) | TTFT (ms) | Load time |
-|---------|-------|-----------|-----------|-----------|
-| GGUF Q4_K_M — llama.cpp | **35.7** | 2711 | — | < 1s |
-| bitsandbytes NF4 | 12.2 | **2361** | 335 | 6.7s |
-| AutoAWQ INT4 | 5.0 | 3027 | 590 | 6.6s |
+| Backend | Tok/s | VRAM (MB) | TTFT (ms) | Load time | ROUGE-L | Judge /10 |
+|---------|-------|-----------|-----------|-----------|---------|-----------|
+| GGUF Q4_K_M — llama.cpp | **35.7** | 2711 | — | < 1s | 0.273 | **9.3** |
+| bitsandbytes NF4 | 12.2 | **2361** | 335 | 6.7s | 0.190 | 8.6 |
+| AutoAWQ INT4 | 5.0 | 3027 | 590 | 6.6s | 0.144 | 7.9 |
 
 ### Mistral-7B-Instruct-v0.3 (GGUF only)
 
@@ -152,8 +152,45 @@ Tradeoff: bitsandbytes dequantizes weights to float16 before matrix multiplicati
 Mistral-7B Q3_K_M ran at 7.9 tok/s using 3845 MB — close to the limit.
 Q4_K_M (4.1GB + KV cache overhead) exceeded VRAM entirely. 3B is the practical upper limit for comfortable inference on 4GB.
 
-### 6. AWQ needs its CUDA extension to be competitive
-AutoAWQ ran at 5.0 tok/s because `awq_ext` optimized CUDA kernels failed to install and layer fusion was skipped. In production (vLLM with llm-compressor), AWQ is competitive with GGUF. AutoAWQ itself is now deprecated — AWQ support has moved to vLLM's llm-compressor.
+### 6. AWQ quality degraded without its CUDA extension
+AutoAWQ ran at 5.0 tok/s and scored 0.144 ROUGE-L / 7.9 judge — lower quality than GGUF Q4_K_M (0.273 / 9.3) despite the same underlying model. This is because `awq_ext` optimized CUDA kernels failed to install, disabling layer fusion and forcing a slow fallback path. In production deployments using vLLM, AWQ with proper kernels is competitive with GGUF in both speed and quality. AutoAWQ itself is now deprecated — see Ecosystem section below.
+
+---
+
+## Quantization Ecosystem & Industry Context
+
+Understanding *why* these tools were chosen — and where each fits in the broader ecosystem — is as important as the benchmark numbers.
+
+### Tool Landscape
+
+| Tool | Status | Best For |
+|------|--------|----------|
+| **llama.cpp + GGUF** | Active, dominant | Local/edge inference — laptops, desktops, constrained hardware |
+| **bitsandbytes** | Active | QLoRA fine-tuning; load-time INT4/INT8 on any HuggingFace model |
+| **AutoAWQ** | **Deprecated** | Superseded by vLLM's llm-compressor |
+| **vLLM + llm-compressor** | Active, growing | Production serving — high-throughput APIs on cloud/datacenter GPUs |
+| **GPTQ** | Active | Alternative to AWQ; slightly higher quality at same bit width |
+
+### Why AutoAWQ is Deprecated
+
+AutoAWQ was the original library for running AWQ-quantized models. The vLLM project formally adopted it and migrated AWQ support into [llm-compressor](https://github.com/vllm-project/llm-compressor), which is now the maintained path. AutoAWQ's last tested configuration was Torch 2.6.0 + Transformers 4.51.3; future compatibility is not guaranteed.
+
+### What the Industry Uses
+
+**For local/edge inference (consumer hardware, < 8GB VRAM):**
+> **llama.cpp + GGUF** is the de facto standard. Hand-written CUDA/Metal/CPU kernels make it the fastest option on constrained hardware. This is what Ollama, LM Studio, and Jan all use under the hood.
+
+**For production serving (cloud, high-throughput APIs):**
+> **vLLM** is the de facto standard. It uses PagedAttention, continuous batching, and supports AWQ/GPTQ/FP8 quantization via llm-compressor. Runs on A10G, A100, H100 class GPUs (8GB+ VRAM required for efficient use).
+
+**For fine-tuning quantized models (QLoRA):**
+> **bitsandbytes** is the standard. It's specifically designed for NF4/INT8 load-time quantization to enable fine-tuning on consumer GPUs. It is not optimized for pure inference throughput.
+
+### Why This Project Used AutoAWQ (and What to Use Instead)
+
+AutoAWQ was chosen because it was the accessible on-device path to AWQ at the time of this project. The results demonstrate exactly why it was deprecated: without the `awq_ext` CUDA kernel, it falls back to a slow execution path (5.0 tok/s vs an expected 30+ tok/s in vLLM) and quality is also degraded (7.9 vs 9.3 judge score for the same model via GGUF).
+
+**For production AWQ inference today:** use vLLM with llm-compressor on an A10G or larger GPU. For 4GB consumer hardware: use GGUF Q4_K_M — it outperforms AWQ in every metric on this class of hardware.
 
 ---
 
@@ -316,6 +353,7 @@ python -m uvicorn webapp.server:app --host 0.0.0.0 --port 8000
 | Stage 6 | AWQ INT4 — AutoAWQ install, pre-quantized model download, AWQ benchmark script | Done |
 | Stage 7 | Results analysis — matplotlib plots, findings.md, recommendations | Done |
 | Stage 8 | Web UI — FastAPI backend, SSE streaming, single-page frontend | Done |
+| Stage 9 | Quality eval — ROUGE-L + Groq LLM-as-judge across all 9 model/backend combinations | Done |
 
 ---
 

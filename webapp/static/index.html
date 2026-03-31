@@ -101,7 +101,19 @@
   .badge-gguf  { background: rgba(76,155,232,0.2); color: var(--gguf); }
   .badge-bnb   { background: rgba(232,131,76,0.2); color: var(--bnb); }
   .badge-awq   { background: rgba(109,190,109,0.2); color: var(--awq); }
-  .model-card .name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+  .model-card .name { font-size: 13px; font-weight: 600; line-height: 1.3; margin-bottom: 6px; }
+  .model-card .stats { font-size: 10px; color: var(--muted); line-height: 1.6; }
+  .model-card .stats span { display: block; }
+  .model-card .judge-pill {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: rgba(74,222,128,0.15);
+    color: var(--green);
+  }
 
   /* ── Prompt area ── */
   .prompt-row { display: flex; gap: 12px; align-items: flex-end; }
@@ -305,11 +317,13 @@
             <th>VRAM (MB)</th>
             <th>TTFT (ms)</th>
             <th>Load (ms)</th>
+            <th>Judge</th>
+            <th>ROUGE-L</th>
             <th>Time</th>
           </tr>
         </thead>
         <tbody id="history-body">
-          <tr class="empty-row"><td colspan="7">No runs yet</td></tr>
+          <tr class="empty-row"><td colspan="9">No runs yet</td></tr>
         </tbody>
       </table>
     </div>
@@ -335,9 +349,21 @@
       const card = document.createElement("div");
       card.className = "model-card" + (m.available ? "" : " unavailable");
       card.dataset.id = m.id;
+
+      const statsHtml = m.bench_tps != null ? `
+        <div class="stats">
+          <span>⚡ ${m.bench_tps} tok/s</span>
+          <span>💾 ${m.bench_vram} MB VRAM</span>
+        </div>` : "";
+
+      const judgeHtml = m.judge_avg != null
+        ? `<div class="judge-pill">Judge ${m.judge_avg}/10</div>` : "";
+
       card.innerHTML = `
         <div class="badge badge-${backendClass[m.backend]}">${backendLabel[m.backend]}</div>
         <div class="name">${m.name}</div>
+        ${statsHtml}
+        ${judgeHtml}
       `;
       if (m.available) {
         card.addEventListener("click", () => selectModel(m, card));
@@ -440,14 +466,28 @@
 
   // ── Render metrics cards ──────────────────────────────────────────────────
   function renderMetrics(m) {
-    const el = document.getElementById("metrics-row");
+    const el  = document.getElementById("metrics-row");
     const fmt = (v, unit) => v != null ? `${v}${unit}` : "—";
+
+    // Benchmark quality stats from selected model
+    const bm = selectedModel || {};
+    const judgeCard = bm.judge_avg != null ? `
+      <div class="metric-card">
+        <div class="val" style="color:var(--green)">${bm.judge_avg}/10</div>
+        <div class="lbl">Judge Score</div>
+      </div>
+      <div class="metric-card">
+        <div class="val" style="color:var(--green);font-size:1rem">${bm.rouge_l ?? "—"}</div>
+        <div class="lbl">ROUGE-L</div>
+      </div>` : "";
+
     el.innerHTML = `
       <div class="metric-card"><div class="val">${fmt(m.tps, "")}</div><div class="lbl">Tok / sec</div></div>
       <div class="metric-card"><div class="val">${fmt(m.vram_mb, "")}</div><div class="lbl">VRAM MB</div></div>
       <div class="metric-card"><div class="val">${fmt(m.ttft_ms, "")}</div><div class="lbl">TTFT ms</div></div>
       <div class="metric-card"><div class="val">${fmt(m.load_time_ms, "")}</div><div class="lbl">Load ms</div></div>
-      <div class="metric-card"><div class="val" style="font-size:0.9rem;color:var(--muted)">${m.backend}</div><div class="lbl">Backend</div></div>
+      ${judgeCard}
+      <div class="metric-card"><div class="val" style="font-size:0.85rem;color:var(--muted)">${m.backend}</div><div class="lbl">Backend</div></div>
     `;
   }
 
@@ -463,6 +503,8 @@
         <td>${r.metrics.vram_mb ?? "—"}</td>
         <td>${r.metrics.ttft_ms ?? "—"}</td>
         <td>${r.metrics.load_time_ms ?? "—"}</td>
+        <td style="color:var(--green)">${r.model.judge_avg != null ? r.model.judge_avg + "/10" : "—"}</td>
+        <td style="color:var(--green)">${r.model.rouge_l ?? "—"}</td>
         <td>${r.time}</td>
       </tr>
     `).join("");

@@ -1,0 +1,69 @@
+model,task_type,task_id,rouge_l,judge_coherence,judge_accuracy,judge_relevance,judge_avg,output_preview
+Llama-3B-AWQ-INT4,qa,qa_01,0.2619,9,9,8,8.67,"(2023)
+The capital of Australia is Canberra. As of 2023, the population of Canberra is approximately 415,000 people. However, the population of the Canberra metropolitan area is around 1.2 million peo"
+Llama-3B-AWQ-INT4,qa,qa_02,0.1217,8,9,7,8.0,"Read the instructions carefully before attempting to answer the questions.
+**Step 1: Read the instructions**
+RAM (Random Access Memory) and ROM (Read-Only Memory) are two types of memory used in compu"
+Llama-3B-AWQ-INT4,qa,qa_03,0.1311,8,9,9,8.67,"?
+Gradient Descent is an optimization algorithm used in machine learning to minimize the loss function of a model. It is a first-order optimization algorithm, meaning it only uses the first derivative"
+Llama-3B-AWQ-INT4,qa,qa_04,0.1393,8,9,9,8.67,"in machine learning?
+In machine learning, there are two primary types of learning: supervised and unsupervised. The main differences between supervised and unsupervised learning are:
+
+**Supervised Lea"
+Llama-3B-AWQ-INT4,qa,qa_05,0.1317,8,9,7,8.0,"and how does it affect the performance of the model?
+Quantization is a technique used to reduce the precision of the model's weights and activations from 32-bit floating-point numbers to 8-bit integer"
+Llama-3B-AWQ-INT4,code,code_01,0.0942,9,10,10,9.67,"A palindrome is a string that reads the same backwards as forwards.
+
+Here's an example of how you can implement this function:
+
+```python
+def is_palindrome(s):
+    return s == s[::-1]
+```
+
+However, th"
+Llama-3B-AWQ-INT4,code,code_02,0.2038,9,10,10,9.67,"This function should take a nested list as input and return a one-dimensional list.
+
+### Example Use Cases
+
+*   `flatten([1, 2, [3, 4], [5, [6, 7]]])` should return `[1, 2, 3, 4, 5, 6, 7]`.
+*   `flatt"
+Llama-3B-AWQ-INT4,code,code_03,0.1311,9,10,10,9.67,"Order the results by salary in descending order.
+
+```sql
+SELECT 
+  id,
+  name,
+  salary
+FROM 
+  employees
+ORDER BY 
+  salary DESC
+LIMIT 3;
+```
+
+This query will return the top 3 highest-paid employees."
+Llama-3B-AWQ-INT4,code,code_04,0.2741,9,10,10,9.67,"Here's an example of how you can implement it:
+
+```python
+import time
+import functools
+
+def timer_decorator(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = tim"
+Llama-3B-AWQ-INT4,code,code_05,0.0766,8,9,6,7.67,"## Step 1: Define the Stack Class
+We start by defining a class named `Stack` that will contain the methods for the stack operations.
+
+## Step 2: Initialize the Stack
+Inside the class, we initialize an"
+Llama-3B-AWQ-INT4,summarization,sum_01,0.0866,8,6,2,5.33,"The LLMs are not just limited to text generation, but can also be used for image and audio processing, and can be integrated with other AI models to create hybrid models. 
+LLMs can be used for a wide "
+Llama-3B-AWQ-INT4,summarization,sum_02,0.2039,8,9,4,7.0,"Quantization can be applied to both convolutional and fully connected layers. It is a widely used technique in deep learning applications. 
+
+## Step 1: Understand the concept of quantization in neural"
+Llama-3B-AWQ-INT4,summarization,sum_03,0.064,8,2,2,4.0,"The Australian government has announced plans to establish a national AI strategy, which will focus on developing and deploying AI solutions that support the country's economic growth and social well-"
+Llama-3B-AWQ-INT4,summarization,sum_04,0.1596,8,6,4,6.0,"The format is designed to be compatible with most deep learning frameworks, including TensorFlow, PyTorch, and Caffe2. The format is also compatible with the OpenCV library, which is widely used in co"
+Llama-3B-AWQ-INT4,summarization,sum_05,0.0813,8,9,6,7.67,"A lower TTFT indicates faster response times, which is crucial for applications like search engines, chatbots, and virtual assistants. 
+TTFT is a key metric for evaluating the performance of interacti"

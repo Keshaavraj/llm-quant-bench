@@ -1,0 +1,167 @@
+[
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "qa",
+    "task_id": "qa_01",
+    "rouge_l": 0.2619,
+    "judge_coherence": 9,
+    "judge_accuracy": 9,
+    "judge_relevance": 8,
+    "judge_avg": 8.67,
+    "output_preview": "(2023)\nThe capital of Australia is Canberra. As of 2023, the population of Canberra is approximately 415,000 people. However, the population of the Canberra metropolitan area is around 1.2 million peo"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "qa",
+    "task_id": "qa_02",
+    "rouge_l": 0.1217,
+    "judge_coherence": 8,
+    "judge_accuracy": 9,
+    "judge_relevance": 7,
+    "judge_avg": 8.0,
+    "output_preview": "Read the instructions carefully before attempting to answer the questions.\n**Step 1: Read the instructions**\nRAM (Random Access Memory) and ROM (Read-Only Memory) are two types of memory used in compu"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "qa",
+    "task_id": "qa_03",
+    "rouge_l": 0.1311,
+    "judge_coherence": 8,
+    "judge_accuracy": 9,
+    "judge_relevance": 9,
+    "judge_avg": 8.67,
+    "output_preview": "?\nGradient Descent is an optimization algorithm used in machine learning to minimize the loss function of a model. It is a first-order optimization algorithm, meaning it only uses the first derivative"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "qa",
+    "task_id": "qa_04",
+    "rouge_l": 0.1393,
+    "judge_coherence": 8,
+    "judge_accuracy": 9,
+    "judge_relevance": 9,
+    "judge_avg": 8.67,
+    "output_preview": "in machine learning?\nIn machine learning, there are two primary types of learning: supervised and unsupervised. The main differences between supervised and unsupervised learning are:\n\n**Supervised Lea"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "qa",
+    "task_id": "qa_05",
+    "rouge_l": 0.1317,
+    "judge_coherence": 8,
+    "judge_accuracy": 9,
+    "judge_relevance": 7,
+    "judge_avg": 8.0,
+    "output_preview": "and how does it affect the performance of the model?\nQuantization is a technique used to reduce the precision of the model's weights and activations from 32-bit floating-point numbers to 8-bit integer"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "code",
+    "task_id": "code_01",
+    "rouge_l": 0.0942,
+    "judge_coherence": 9,
+    "judge_accuracy": 10,
+    "judge_relevance": 10,
+    "judge_avg": 9.67,
+    "output_preview": "A palindrome is a string that reads the same backwards as forwards.\n\nHere's an example of how you can implement this function:\n\n```python\ndef is_palindrome(s):\n    return s == s[::-1]\n```\n\nHowever, th"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "code",
+    "task_id": "code_02",
+    "rouge_l": 0.2038,
+    "judge_coherence": 9,
+    "judge_accuracy": 10,
+    "judge_relevance": 10,
+    "judge_avg": 9.67,
+    "output_preview": "This function should take a nested list as input and return a one-dimensional list.\n\n### Example Use Cases\n\n*   `flatten([1, 2, [3, 4], [5, [6, 7]]])` should return `[1, 2, 3, 4, 5, 6, 7]`.\n*   `flatt"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "code",
+    "task_id": "code_03",
+    "rouge_l": 0.1311,
+    "judge_coherence": 9,
+    "judge_accuracy": 10,
+    "judge_relevance": 10,
+    "judge_avg": 9.67,
+    "output_preview": "Order the results by salary in descending order.\n\n```sql\nSELECT \n  id,\n  name,\n  salary\nFROM \n  employees\nORDER BY \n  salary DESC\nLIMIT 3;\n```\n\nThis query will return the top 3 highest-paid employees."
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "code",
+    "task_id": "code_04",
+    "rouge_l": 0.2741,
+    "judge_coherence": 9,
+    "judge_accuracy": 10,
+    "judge_relevance": 10,
+    "judge_avg": 9.67,
+    "output_preview": "Here's an example of how you can implement it:\n\n```python\nimport time\nimport functools\n\ndef timer_decorator(func):\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start_time = tim"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "code",
+    "task_id": "code_05",
+    "rouge_l": 0.0766,
+    "judge_coherence": 8,
+    "judge_accuracy": 9,
+    "judge_relevance": 6,
+    "judge_avg": 7.67,
+    "output_preview": "## Step 1: Define the Stack Class\nWe start by defining a class named `Stack` that will contain the methods for the stack operations.\n\n## Step 2: Initialize the Stack\nInside the class, we initialize an"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "summarization",
+    "task_id": "sum_01",
+    "rouge_l": 0.0866,
+    "judge_coherence": 8,
+    "judge_accuracy": 6,
+    "judge_relevance": 2,
+    "judge_avg": 5.33,
+    "output_preview": "The LLMs are not just limited to text generation, but can also be used for image and audio processing, and can be integrated with other AI models to create hybrid models. \nLLMs can be used for a wide "
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "summarization",
+    "task_id": "sum_02",
+    "rouge_l": 0.2039,
+    "judge_coherence": 8,
+    "judge_accuracy": 9,
+    "judge_relevance": 4,
+    "judge_avg": 7.0,
+    "output_preview": "Quantization can be applied to both convolutional and fully connected layers. It is a widely used technique in deep learning applications. \n\n## Step 1: Understand the concept of quantization in neural"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "summarization",
+    "task_id": "sum_03",
+    "rouge_l": 0.064,
+    "judge_coherence": 8,
+    "judge_accuracy": 2,
+    "judge_relevance": 2,
+    "judge_avg": 4.0,
+    "output_preview": "The Australian government has announced plans to establish a national AI strategy, which will focus on developing and deploying AI solutions that support the country's economic growth and social well-"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "summarization",
+    "task_id": "sum_04",
+    "rouge_l": 0.1596,
+    "judge_coherence": 8,
+    "judge_accuracy": 6,
+    "judge_relevance": 4,
+    "judge_avg": 6.0,
+    "output_preview": "The format is designed to be compatible with most deep learning frameworks, including TensorFlow, PyTorch, and Caffe2. The format is also compatible with the OpenCV library, which is widely used in co"
+  },
+  {
+    "model": "Llama-3B-AWQ-INT4",
+    "task_type": "summarization",
+    "task_id": "sum_05",
+    "rouge_l": 0.0813,
+    "judge_coherence": 8,
+    "judge_accuracy": 9,
+    "judge_relevance": 6,
+    "judge_avg": 7.67,
+    "output_preview": "A lower TTFT indicates faster response times, which is crucial for applications like search engines, chatbots, and virtual assistants. \nTTFT is a key metric for evaluating the performance of interacti"
+  }
+]
