@@ -55,6 +55,8 @@ DEFAULT_RUNS = 3          # runs per model — results are averaged
 
 # ── GGUF models — ordered from most to least compressed ──────────────────────
 GGUF_MODELS = [
+    "SmolLM2-135M-Instruct-Q4_K_M.gguf",
+    "SmolLM2-135M-Instruct-Q8_0.gguf",
     "Llama-3.2-3B-Instruct-Q3_K_L.gguf",
     "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
     "Llama-3.2-3B-Instruct-Q5_K_M.gguf",

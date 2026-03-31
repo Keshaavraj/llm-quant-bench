@@ -1,0 +1,24 @@
+[
+  {
+    "model": "SmolLM2-135M-Instruct-Q4_K_M.gguf",
+    "load_time_ms": null,
+    "ttft_ms": null,
+    "tokens_per_sec": 347.4,
+    "peak_vram_mb": 473.0,
+    "runs": 3,
+    "backend": "gguf",
+    "status": "ok",
+    "note": ""
+  },
+  {
+    "model": "SmolLM2-135M-Instruct-Q8_0.gguf",
+    "load_time_ms": null,
+    "ttft_ms": null,
+    "tokens_per_sec": 324.7,
+    "peak_vram_mb": 511.0,
+    "runs": 3,
+    "backend": "gguf",
+    "status": "ok",
+    "note": ""
+  }
+]

@@ -8,13 +8,20 @@
 
 ## Benchmark Results
 
+### GGUF (llama.cpp) — SmolLM2-135M-Instruct
+
+| Format | Bits/weight | Tok/s | VRAM (MB) | Notes |
+|--------|-------------|-------|-----------|-------|
+| Q4_K_M | ~4.5 | **347.4** | 473 | Fastest model in benchmark |
+| Q8_0   | ~8.0 | 324.7 | 511 | Near-lossless, still extremely fast |
+
 ### GGUF (llama.cpp) — Llama-3.2-3B-Instruct
 
 | Format | Bits/weight | Tok/s | VRAM (MB) | Notes |
 |--------|-------------|-------|-----------|-------|
 | Q3_K_L | ~3.4 | 33.2 | 2515 | Most compressed |
 | Q4_K_M | ~4.5 | 35.7 | 2711 | Sweet spot — best speed/quality balance |
-| Q5_K_M | ~5.5 | **37.0** | 2999 | Fastest overall |
+| Q5_K_M | ~5.5 | **37.0** | 2999 | Fastest among 3B |
 | Q8_0   | ~8.0 | 25.6 | 3828 | Near-lossless quality |
 
 ### Cross-Backend Comparison — Llama-3.2-3B-Instruct @ INT4
@@ -126,23 +133,26 @@ analyze_results.py →  load all JSONs → matplotlib plots  →  results/plots/
 
 ## Key Findings
 
-### 1. llama.cpp GGUF dominates inference speed on constrained hardware
-GGUF Q4_K_M delivered **35.7 tok/s** — 3× faster than bitsandbytes, 7× faster than AWQ.
+### 1. Model size is the single biggest lever
+SmolLM2-135M Q4_K_M hit **347.4 tok/s** using only 473 MB VRAM — 10× faster than Llama-3B and using 6× less VRAM. For latency-critical applications where output quality requirements are modest, a 135M model is a fundamentally different class of deployment target than a 3B model.
+
+### 2. llama.cpp GGUF dominates inference speed within the same model size
+GGUF Q4_K_M delivered **35.7 tok/s** on Llama-3B — 3× faster than bitsandbytes, 7× faster than AWQ.
 llama.cpp has hand-written CUDA kernels that operate directly on quantized INT4 weights without dequantizing first.
 
-### 2. More bits ≠ more speed
+### 3. More bits ≠ more speed
 Q5_K_M (37.0 tok/s) was faster than Q4_K_M (35.7) despite using more bits.
 Q8_0 dropped to 25.6 tok/s — at 8 bits per weight the model no longer fits efficiently in GPU cache, causing memory bandwidth pressure. The sweet spot on this GPU is Q4–Q5.
 
-### 3. bitsandbytes uses the least VRAM
+### 4. bitsandbytes uses the least VRAM
 NF4 with double quantization used only 2361 MB — 350 MB less than GGUF Q4_K_M.
 Tradeoff: bitsandbytes dequantizes weights to float16 before matrix multiplication, adding overhead that hurts throughput. It is designed for QLoRA fine-tuning, not pure inference.
 
-### 4. 7B models barely fit on 4GB VRAM
+### 5. 7B models barely fit on 4GB VRAM
 Mistral-7B Q3_K_M ran at 7.9 tok/s using 3845 MB — close to the limit.
 Q4_K_M (4.1GB + KV cache overhead) exceeded VRAM entirely. 3B is the practical upper limit for comfortable inference on 4GB.
 
-### 5. AWQ needs its CUDA extension to be competitive
+### 6. AWQ needs its CUDA extension to be competitive
 AutoAWQ ran at 5.0 tok/s because `awq_ext` optimized CUDA kernels failed to install and layer fusion was skipped. In production (vLLM with llm-compressor), AWQ is competitive with GGUF. AutoAWQ itself is now deprecated — AWQ support has moved to vLLM's llm-compressor.
 
 ---

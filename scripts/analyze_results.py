@@ -33,16 +33,23 @@ def load_json(path):
     with open(path) as f:
         return json.load(f)
 
-# Pick the latest file for each backend
+# Merge all GGUF result files (runs may be split across multiple files)
+gguf_data = []
+seen = set()
+for f in sorted(RESULTS.glob("benchmark_2*.json")):
+    for r in load_json(f):
+        if r["model"] not in seen:
+            seen.add(r["model"])
+            gguf_data.append(r)
+
+# Pick the latest file for INT4 and AWQ
 def latest(pattern):
     files = sorted(RESULTS.glob(pattern))
     return files[-1] if files else None
 
-gguf_file  = latest("benchmark_2*.json")
 int4_file  = latest("benchmark_int4_*.json")
 awq_file   = latest("benchmark_awq_*.json")
 
-gguf_data  = load_json(gguf_file)  if gguf_file  else []
 int4_data  = load_json(int4_file)  if int4_file  else []
 awq_data   = load_json(awq_file)   if awq_file   else []
 
