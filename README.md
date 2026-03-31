@@ -45,31 +45,31 @@
 
 **Throughput Comparison — tok/s across all models and backends**
 
-![Throughput Comparison](results/plots/throughput_comparison.png)
+<img src="results/plots/throughput_comparison.png" alt="Throughput Comparison" width="800"/>
 
 ---
 
 **VRAM Usage — peak memory with 4GB hardware limit marked**
 
-![VRAM Comparison](results/plots/vram_comparison.png)
+<img src="results/plots/vram_comparison.png" alt="VRAM Comparison" width="800"/>
 
 ---
 
 **Efficiency Frontier — throughput vs VRAM trade-off (top-left = best)**
 
-![Efficiency Frontier](results/plots/throughput_vs_vram.png)
+<img src="results/plots/throughput_vs_vram.png" alt="Efficiency Frontier" width="800"/>
 
 ---
 
 **Quality Comparison — ROUGE-L and Judge score across all models**
 
-![Quality Comparison](results/plots/quality_comparison.png)
+<img src="results/plots/quality_comparison.png" alt="Quality Comparison" width="800"/>
 
 ---
 
 **Speed vs Quality — throughput vs judge score scatter**
 
-![Speed vs Quality](results/plots/speed_vs_quality.png)
+<img src="results/plots/speed_vs_quality.png" alt="Speed vs Quality" width="800"/>
 
 ---
 
