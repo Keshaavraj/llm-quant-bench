@@ -335,15 +335,105 @@ Double quantization saves ~350MB vs GGUF Q4_K_M (2361 vs 2711 MB).
 
 ---
 
-## TODO — Upcoming Stages
+## Stage 6: AWQ (Activation-aware Weight Quantization)
 
-### Stage 6: AWQ
-- Install autoawq
-- Download pre-quantized AWQ model from HuggingFace
-- Write `scripts/benchmark_awq.py`
-- Compare with GGUF and bitsandbytes
+### What is AWQ?
+AWQ is a quantization method that compresses weights to INT4 but — unlike GGUF or bitsandbytes —
+selects which weights to quantize carefully based on activation magnitudes.
 
-### Stage 7: Results analysis
-- Plot VRAM vs quality tradeoff
-- Write findings in results/findings.md
-- Push everything to GitHub
+Key insight: not all weights matter equally. A small fraction of weights (those corresponding to
+large activations) contribute disproportionately to model quality. AWQ identifies and protects
+these weights during quantization, achieving better quality than naive INT4 at the same bit width.
+
+AWQ is a **file format** (like GGUF) — the quantization is done offline and saved to disk.
+At inference time you just load the pre-quantized file, no on-the-fly conversion needed.
+
+### AWQ vs bitsandbytes vs GGUF
+| Property | GGUF | bitsandbytes NF4 | AWQ |
+|----------|------|------------------|-----|
+| Quantized at | offline | load time | offline |
+| Format | single file | safetensors + config | safetensors + config |
+| Inference kernel | hand-written CUDA (fast) | dequant→fp16 GEMM (slow) | fused CUDA (fast when awq_ext installed) |
+| Designed for | inference | training (QLoRA) | inference + training |
+
+### Install AutoAWQ
+```bash
+pip install autoawq
+```
+**Note:** AutoAWQ is now deprecated — the author handed it off to vLLM's llm-compressor project.
+It still works with Torch 2.6.0 + Transformers 4.51.3, which is our configuration.
+
+### Download pre-quantized AWQ model (3.05GB)
+```bash
+python -c "from huggingface_hub import snapshot_download; snapshot_download('AMead10/Llama-3.2-3B-Instruct-AWQ', local_dir='models/Llama-3.2-3B-Instruct-AWQ')"
+```
+**Why pre-quantized:** AWQ calibration (the process of finding which weights to protect)
+requires running the full float16 model on a calibration dataset — takes hours and needs
+more RAM than this machine has. Pre-quantized models from HuggingFace skip this step.
+
+**Why this repo:** `hugging-quants/Llama-3.2-3B-Instruct-AWQ-INT4` does not exist (that org
+only quantized Llama 3.1 variants). `AMead10/Llama-3.2-3B-Instruct-AWQ` is a publicly
+available, non-gated AWQ INT4 model for Llama 3.2 3B.
+
+### Results
+
+| Model | Backend | Load | TTFT | Tok/s | VRAM |
+|-------|---------|------|------|-------|------|
+| Llama-3.2-3B-Instruct-AWQ-INT4 | AutoAWQ | 6649ms | 590ms | 5.0 | 3027 MB |
+
+**Script:** `scripts/benchmark_awq.py`
+**Results:** `results/benchmark_awq_20260331_120158.csv/.json`
+
+### Why AWQ was slower than expected
+Two optimizations failed silently:
+1. `awq_ext` CUDA kernel not installed — AutoAWQ fell back to slow PyTorch ops
+2. `fuse_layers=True` was skipped (depends on awq_ext) — attention layers not fused
+
+In production (vLLM with llm-compressor), AWQ with proper CUDA kernels is competitive
+with GGUF. The 5.0 tok/s result reflects the fallback path, not AWQ's true potential.
+
+### Full cross-backend comparison
+
+| Backend | Tok/s | VRAM (MB) | Load |
+|---------|-------|-----------|------|
+| GGUF Q4_K_M (llama.cpp) | 35.7 | 2711 | <1s |
+| bitsandbytes NF4 | 12.2 | 2361 | 6.7s |
+| AutoAWQ INT4 | 5.0 | 3027 | 6.6s |
+
+---
+
+## Stage 7: Results Analysis
+
+### Install analysis dependencies
+```bash
+pip install matplotlib pandas
+```
+
+### Run analysis script
+```bash
+python scripts/analyze_results.py
+```
+
+**Script:** `scripts/analyze_results.py`
+
+Loads all result JSON files, generates 3 plots, and writes `results/findings.md`.
+
+### Plots generated
+
+**throughput_comparison.png** — Bar chart of tok/s across all models and backends.
+Shows GGUF dominates inference speed; 7B models are significantly slower than 3B.
+
+**vram_comparison.png** — Peak VRAM usage per model with the 4GB hardware limit marked.
+Shows which models are close to the limit and which have headroom.
+
+**throughput_vs_vram.png** — Scatter plot of tok/s vs VRAM (efficiency frontier).
+Top-left = best trade-off. GGUF Q4_K_M and Q5_K_M sit closest to the ideal corner.
+
+### Key findings (summary)
+1. **GGUF wins on speed** — hand-written CUDA kernels operate on quantized weights directly
+2. **More bits ≠ more speed** — Q5_K_M (37.0 tok/s) beats Q4_K_M (35.7) and Q8_0 (25.6)
+3. **bitsandbytes saves most VRAM** — 2361MB vs 2711MB (GGUF), thanks to double quantization
+4. **7B on 4GB is tight** — Mistral-7B Q3_K_M fits (3845MB), Q4_K_M does not (OOM)
+5. **AWQ needs its CUDA extension** — without awq_ext the fallback path is unusably slow
+
+Full analysis: `results/findings.md`
