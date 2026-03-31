@@ -51,11 +51,20 @@ def latest(pattern):
 
 int4_file  = latest("benchmark_int4_*.json")
 awq_file   = latest("benchmark_awq_*.json")
-eval_file  = latest("eval_quality_*.json")
 
 int4_data  = load_json(int4_file)  if int4_file  else []
 awq_data   = load_json(awq_file)   if awq_file   else []
-eval_data  = load_json(eval_file)  if eval_file  else []
+
+# Merge ALL eval files — each run (GGUF, INT4, AWQ) saves a separate file
+# Deduplicate by (model, task_id) so re-runs don't double-count
+eval_data = []
+eval_seen = set()
+for f in sorted(RESULTS.glob("eval_quality_*.json")):
+    for r in load_json(f):
+        key = (r["model"], r["task_id"])
+        if key not in eval_seen:
+            eval_seen.add(key)
+            eval_data.append(r)
 
 # ── Build quality lookup: model_name → {rouge_l, judge_avg} ──────────────────
 
@@ -96,26 +105,30 @@ for r in gguf_data:
 
 for r in int4_data:
     if r["status"] == "ok" and r["tokens_per_sec"] is not None:
+        eval_key = "Llama-3B-INT4-NF4"
+        q = quality.get(eval_key, {})
         all_results.append({
             "label":     "Llama-3B-INT4-NF4\n(bitsandbytes)",
-            "eval_key":  None,
+            "eval_key":  eval_key,
             "backend":   "bitsandbytes INT4",
             "tps":       r["tokens_per_sec"],
             "vram":      r["peak_vram_mb"],
-            "rouge_l":   None,
-            "judge_avg": None,
+            "rouge_l":   q.get("rouge_l"),
+            "judge_avg": q.get("judge_avg"),
         })
 
 for r in awq_data:
     if r["status"] == "ok" and r["tokens_per_sec"] is not None:
+        eval_key = "Llama-3B-AWQ-INT4"
+        q = quality.get(eval_key, {})
         all_results.append({
             "label":     "Llama-3B-AWQ-INT4\n(AutoAWQ)",
-            "eval_key":  None,
+            "eval_key":  eval_key,
             "backend":   "AWQ",
             "tps":       r["tokens_per_sec"],
             "vram":      r["peak_vram_mb"],
-            "rouge_l":   None,
-            "judge_avg": None,
+            "rouge_l":   q.get("rouge_l"),
+            "judge_avg": q.get("judge_avg"),
         })
 
 # ── Color mapping ─────────────────────────────────────────────────────────────
@@ -182,27 +195,47 @@ print("Saved: results/plots/vram_comparison.png")
 
 # ── Plot 3: Throughput vs VRAM scatter ────────────────────────────────────────
 
-fig, ax = plt.subplots(figsize=(10, 7))
+# Short display labels for scatter (avoid clutter)
+def scatter_label(r):
+    lbl = r["label"].replace("\n", " ")
+    lbl = lbl.replace("Llama-3B-Instruct-", "").replace("SmolLM2-135M-", "SmolLM2-")
+    lbl = lbl.replace("Llama-3B-", "").replace("-Instruct", "")
+    lbl = lbl.replace(" (bitsandbytes)", "").replace(" (AutoAWQ)", "")
+    return lbl
+
+all_vrams = [r["vram"] for r in all_results]
+all_tps_v = [r["tps"]  for r in all_results]
+vram_med  = sorted(all_vrams)[len(all_vrams) // 2]
+tps_med   = sorted(all_tps_v)[len(all_tps_v) // 2]
+
+fig, ax = plt.subplots(figsize=(12, 8))
 
 for r in all_results:
     color = COLORS[r["backend"]]
-    ax.scatter(r["vram"], r["tps"], color=color, s=120, zorder=5, edgecolors="white", linewidth=1)
+    ax.scatter(r["vram"], r["tps"], color=color, s=140, zorder=5, edgecolors="white", linewidth=1.2)
+
+    # Push label away from cluster centre
+    xo = 10  if r["vram"] <= vram_med else -10
+    yo = 10  if r["tps"]  >= tps_med  else -14
+    ha = "left" if r["vram"] <= vram_med else "right"
+
     ax.annotate(
-        r["label"].replace("\n", " "),
+        scatter_label(r),
         (r["vram"], r["tps"]),
-        textcoords="offset points", xytext=(8, 4),
-        fontsize=8, color=color, fontweight="bold",
+        textcoords="offset points", xytext=(xo, yo),
+        ha=ha, va="center",
+        fontsize=8.5, color=color, fontweight="bold",
     )
 
 ax.axvline(x=4096, color="red", linestyle="--", linewidth=1.2, alpha=0.6)
-ax.text(4110, max(tps) * 0.95, "4GB limit", color="red", fontsize=8)
+ax.text(4110, max(all_tps_v) * 0.92, "4GB limit", color="red", fontsize=9)
 ax.set_xlabel("Peak VRAM (MB)  →  lower is better", fontsize=11)
 ax.set_ylabel("Throughput (tok/s)  →  higher is better", fontsize=11)
 ax.set_title("Efficiency Frontier: Throughput vs VRAM\n(top-left = best trade-off)", fontsize=13, fontweight="bold")
-ax.grid(alpha=0.3)
+ax.grid(alpha=0.25)
 ax.spines[["top", "right"]].set_visible(False)
 legend_patches = [mpatches.Patch(color=c, label=l) for l, c in COLORS.items()]
-ax.legend(handles=legend_patches, fontsize=9)
+ax.legend(handles=legend_patches, fontsize=9, loc="upper right")
 plt.tight_layout()
 plt.savefig(PLOTS / "throughput_vs_vram.png", dpi=150)
 plt.close()
@@ -259,28 +292,41 @@ if qual_results:
 # ── Plot 5: Speed vs Quality scatter ─────────────────────────────────────────
 
 if qual_results:
-    fig, ax = plt.subplots(figsize=(10, 7))
+    all_tps_q   = [r["tps"]       for r in qual_results]
+    all_judge_q = [r["judge_avg"] for r in qual_results]
+    tps_med_q   = sorted(all_tps_q)[len(all_tps_q) // 2]
+    judge_med_q = sorted(all_judge_q)[len(all_judge_q) // 2]
+
+    fig, ax = plt.subplots(figsize=(12, 8))
 
     for r in qual_results:
         color = COLORS[r["backend"]]
-        ax.scatter(r["tps"], r["judge_avg"], color=color, s=150, zorder=5,
-                   edgecolors="white", linewidth=1)
+        ax.scatter(r["tps"], r["judge_avg"], color=color, s=160, zorder=5,
+                   edgecolors="white", linewidth=1.2)
+
+        # Push label away from cluster centre
+        xo = 10  if r["tps"]       <= tps_med_q   else -10
+        yo = 10  if r["judge_avg"] >= judge_med_q  else -14
+        ha = "left" if r["tps"] <= tps_med_q else "right"
+
         ax.annotate(
-            r["label"].replace("\n", " "),
+            scatter_label(r),
             (r["tps"], r["judge_avg"]),
-            textcoords="offset points", xytext=(8, 4),
-            fontsize=8, color=color, fontweight="bold",
+            textcoords="offset points", xytext=(xo, yo),
+            ha=ha, va="center",
+            fontsize=8.5, color=color, fontweight="bold",
         )
 
-    ax.set_xlabel("Throughput (tok/s)  →  higher is faster", fontsize=11)
+    ax.set_xscale("log")
+    ax.set_xlabel("Throughput (tok/s, log scale)  →  higher is faster", fontsize=11)
     ax.set_ylabel("LLM Judge Score /10  →  higher is better quality", fontsize=11)
     ax.set_title("Speed vs Quality Trade-off\n(top-right = ideal: fast AND good quality)",
                  fontsize=13, fontweight="bold")
-    ax.grid(alpha=0.3)
+    ax.grid(alpha=0.25, which="both")
     ax.spines[["top", "right"]].set_visible(False)
     legend_patches = [mpatches.Patch(color=c, label=l) for l, c in COLORS.items()
                       if any(r["backend"] == l for r in qual_results)]
-    ax.legend(handles=legend_patches, fontsize=9)
+    ax.legend(handles=legend_patches, fontsize=9, loc="lower right")
     plt.tight_layout()
     plt.savefig(PLOTS / "speed_vs_quality.png", dpi=150)
     plt.close()
