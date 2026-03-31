@@ -1,0 +1,110 @@
+model,task_type,task_id,rouge_l,judge_coherence,judge_accuracy,judge_relevance,judge_avg,output_preview
+SmolLM2-135M-Q4_K_M,qa,qa_01,0.449,8,9,6,7.67,"Australia is a country located in the Southern Hemisphere and is known for its diverse landscapes, vibrant cities, and rich culture. The capital of Australia is Canberra, and its population is approxi"
+SmolLM2-135M-Q4_K_M,qa,qa_02,0.1405,8,9,9,8.67,"RAM (Random Access Memory) and ROM (Read-Only Memory) are two types of memory used in computers.
+
+RAM, or Random Access Memory, is a part of a computer that stores data temporarily. When the compute"
+SmolLM2-135M-Q4_K_M,qa,qa_03,0.1176,8,9,7,8.0,"Gradient descent is a widely used optimization algorithm in machine learning that updates the cost function of a neural network to minimize the loss function, usually denoted as L. The gradient descen"
+SmolLM2-135M-Q4_K_M,qa,qa_04,0.125,8,9,7,8.0,"The main differences between supervised and unsupervised learning lie in the way they approach problem solving and the characteristics of the data used.
+
+1. **Training**: Supervised learning involve"
+SmolLM2-135M-Q4_K_M,qa,qa_05,0.0611,8,6,7,7.0,"In the context of large language models, quantization refers to the process of transforming a large number of samples into a compact and standardized representation. This is achieved through a process"
+SmolLM2-135M-Q4_K_M,code,code_01,0.1279,9,10,10,9.67,"Here is a simple Python function that checks if a string is a palindrome:
+
+```python
+def is_palindrome(s):
+    return s == s[::-1]
+```
+
+However, this function does not handle the case when the "
+SmolLM2-135M-Q4_K_M,code,code_02,0.2302,8,6,7,7.0,"Here's how you can flatten a nested list in Python:
+
+```python
+def flatten_nested_list(nested_list):
+    flattened = []
+    for item in nested_list:
+        if isinstance(item, list):
+         "
+SmolLM2-135M-Q4_K_M,code,code_03,0.1239,2,1,1,1.33,"Here's a SQL query that retrieves the top 3 highest-paid employees from the employees table:
+
+```sql
+SELECT * FROM employees WHERE id = 3;
+```
+
+This query will return the top 3 employees with th"
+SmolLM2-135M-Q4_K_M,code,code_04,0.2717,9,8,10,9.0,"```python
+import time
+
+def measure_execution_time(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        end_time = tim"
+SmolLM2-135M-Q4_K_M,code,code_05,0.3694,9,10,10,9.67,"```python
+class Stack:
+    def __init__(self):
+        self.items = []
+
+    def push(self, item):
+        self.items.append(item)
+
+    def pop(self):
+        if self.is_empty():
+            "
+SmolLM2-135M-Q4_K_M,summarization,sum_01,0.1509,8,7,4,6.33,Linguistic models like GPT-4 and Llama have massive computational requirements that require extensive computing power to train.
+SmolLM2-135M-Q4_K_M,summarization,sum_02,0.2571,8,9,7,8.0,"Quantization reduces numerical precision by converting 32-bit or 16-bit floating point weights into 8-bit or 4-bit integers, which can be stored on a single chip. This optimizes memory usage and suppo"
+SmolLM2-135M-Q4_K_M,summarization,sum_03,0.3188,8,9,6,7.67,"Australia's technology sector has seen rapid growth in artificial intelligence adoption across finance, healthcare, and government, with major banks and insurance companies deploying on-premise LLMs t"
+SmolLM2-135M-Q4_K_M,summarization,sum_04,0.4507,10,10,10,10.0,"The GGUF format, developed by Llama.cpp, supports efficient CPU and GPU inference through mixed-precision quantization. It offers quantization levels from Q2 to Q8, where higher numbers preserve more "
+SmolLM2-135M-Q4_K_M,summarization,sum_05,0.3125,9,8,9,8.67,"A quick summary of the two-sentence segment: TFT measures the latency between sending a prompt and receiving the first token of a response. This is crucial for interactive applications, as users perce"
+SmolLM2-135M-Q8_0,qa,qa_01,0.4348,9,8,6,7.67,"The capital of Australia is Canberra. It is a vibrant city that serves as the state capital, as well as the country's capital. The population of Canberra is around 500,000 people."
+SmolLM2-135M-Q8_0,qa,qa_02,0.1067,8,7,9,8.0,"RAM, or Random Access Memory, and ROM, or Read-Only Memory, are two types of memory used in a computer's operating system, which contains the essential information needed to run the program.
+
+RAM is"
+SmolLM2-135M-Q8_0,qa,qa_03,0.1202,8,9,9,8.67,"Gradient descent is a method in machine learning for updating a model's parameters in response to the loss function. In simpler terms, it helps the model learn from its errors and adjust its parameter"
+SmolLM2-135M-Q8_0,qa,qa_04,0.1667,8,9,9,8.67,"The primary difference between supervised and unsupervised learning lies in the direction of the decision-making process.
+
+Supervised learning involves training a model on labeled data, where the ou"
+SmolLM2-135M-Q8_0,qa,qa_05,0.0876,8,6,7,7.0,"In the context of large language models, quantization refers to the process of reducing the number of parameters or weights in the model's decision trees or neural networks to a more manageable range "
+SmolLM2-135M-Q8_0,code,code_01,0.156,8,9,7,8.0,"Here is a Python function that checks if a string is a palindrome:
+
+```python
+def is_palindrome(s):
+    s = s.lower()  # Convert to lowercase for case-insensitive comparison
+    return s == s[::-"
+SmolLM2-135M-Q8_0,code,code_02,0.227,9,10,10,9.67,"To flatten a nested list, you can use recursion. Here's a Python function that does this:
+
+```python
+def flatten(nested_list):
+    """"""
+    Recursively flattens a nested list.
+
+    Args:
+    ne"
+SmolLM2-135M-Q8_0,code,code_03,0.0909,8,2,1,3.67,"Here's a simple SQL query to find the top 3 highest-paid employees:
+
+```sql
+SELECT * FROM employees WHERE id = 3;
+```
+
+This query selects all employees who have a unique id (3) from the `employe"
+SmolLM2-135M-Q8_0,code,code_04,0.3309,8,9,9,8.67,"Here's a Python decorator that measures and prints the execution time of a function:
+
+```python
+def timer_decorator(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+    "
+SmolLM2-135M-Q8_0,code,code_05,0.2667,9,10,8,9.0,"```python
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+
+class Stack:
+    def __init__(self):
+        self.head = None
+        self.tail = Non"
+SmolLM2-135M-Q8_0,summarization,sum_01,0.1622,8,6,7,7.0,Lemmage's model for language translation (GPT-4) utilizes a vast corpus of text data to learn complex patterns and generate coherent text. Its massive parameters mean it can handle millions of queries
+SmolLM2-135M-Q8_0,summarization,sum_02,0.3333,8,9,7,8.0,"Summary: Quantization reduces numerical precision by converting 32-bit or 16-bit floating point weights to 8-bit or 4-bit integers, reducing memory usage and allowing models to maintain original model"
+SmolLM2-135M-Q8_0,summarization,sum_03,0.3478,10,10,10,10.0,"Australia's technology sector has seen rapid growth in artificial intelligence adoption across finance, healthcare, and government. Major banks and insurance companies are deploying on-premise LLMs to"
+SmolLM2-135M-Q8_0,summarization,sum_04,0.4789,10,10,10,10.0,"The GGUF format, used by llama.cpp, supports efficient CPU and GPU inference through mixed-precision quantization. It offers quantization levels from Q2 to Q8, where higher numbers preserve more quali"
+SmolLM2-135M-Q8_0,summarization,sum_05,0.25,8,9,6,7.67,The TFT measures the latency between sending a prompt and receiving the first token of a response in an interactive application.
