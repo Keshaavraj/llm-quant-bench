@@ -233,21 +233,114 @@ llama-3.2-3B-Q4_K_M.gguf
 
 ---
 
+## Stage 4: Benchmark Script
+
+Written `scripts/benchmark.py` (305 LOC) — runs each GGUF model via `llama-cli`,
+captures output through a pseudo-terminal (pty), parses timing stats, and saves CSV/JSON.
+
+**Key engineering challenge:** `llama-cli` writes progress output directly to `/dev/tty`,
+bypassing stdout/stderr pipes entirely. Fixed by:
+- Opening a pty master/slave pair
+- Calling `os.setsid()` + `TIOCSCTTY` in the child so the pty slave becomes its controlling terminal
+- Reading all output from the pty master side
+
+**Timing format changed in llama.cpp b8000+:**
+Old: `llama_print_timings: load time = X ms` (stderr)
+New: `[ Prompt: X t/s | Generation: Y t/s ]` (stdout via pty)
+Script handles both formats.
+
+---
+
+## Stage 5: bitsandbytes INT4
+
+### What is bitsandbytes?
+bitsandbytes is a HuggingFace library for quantizing model weights on-the-fly during loading.
+Unlike GGUF (a file format), bitsandbytes quantizes at load time — you load the original
+float16 weights and bitsandbytes converts each layer to INT4 as it lands on the GPU.
+
+### Install PyTorch (CUDA 12.4) + dependencies
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu124
+pip install transformers accelerate bitsandbytes
+```
+**Why CUDA 12.4 wheel:** PyTorch builds are tied to specific CUDA versions.
+Our machine has CUDA 12.6 drivers but PyTorch's cu124 wheel is compatible
+(CUDA is backward compatible within minor versions).
+
+### HuggingFace login
+```bash
+python -c "from huggingface_hub import login; login()"
+```
+**Why:** Meta's Llama models are gated — requires accepting license on HuggingFace
+and authenticating with an access token (Read permission). Token saved to
+`~/.cache/huggingface/token` after first login.
+
+### Download model (12.9GB — safetensors format)
+```bash
+python -c "
+from huggingface_hub import snapshot_download
+snapshot_download('meta-llama/Llama-3.2-3B-Instruct', local_dir='models/Llama-3.2-3B-Instruct-HF')
+"
+```
+**Why safetensors vs GGUF:**
+- GGUF = pre-quantized, single file, llama.cpp format
+- Safetensors = original float16 weights in HuggingFace format, multiple shards
+- bitsandbytes loads safetensors and quantizes on-the-fly to INT4
+
+### What is NF4 quantization?
+NF4 (Normal Float 4) is a 4-bit data type designed specifically for neural network weights.
+Unlike a uniform 4-bit grid, NF4 places more precision near zero — matching the bell-curve
+distribution that LLM weights naturally follow.
+
+**Config used:**
+```python
+BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",           # bell-curve optimized 4-bit
+    bnb_4bit_use_double_quant=True,      # quantize the scales too (~0.4 bits saved)
+    bnb_4bit_compute_dtype=torch.float16,# dequantize to fp16 for actual math
+)
+```
+
+**Double quantization:** The quantization scales (one per 64 weights) are themselves
+quantized from float32 to float8, saving an additional ~0.4 bits/param.
+
+**Compute dtype:** Weights are stored as 4-bit but dequantized to float16 on-the-fly
+during matrix multiplication. The GPU computes in fp16, not int4 — so CUDA cores are used,
+not tensor cores. This is why bitsandbytes is slower than llama.cpp for pure inference.
+
+### Results
+
+| Model | Backend | Load | TTFT | Tok/s | VRAM |
+|-------|---------|------|------|-------|------|
+| Llama-3.2-3B-Instruct-INT4-NF4 | bitsandbytes | 6664ms | 335ms | 12.2 | 2361 MB |
+
+**Script:** `scripts/benchmark_int4.py`
+**Results:** `results/benchmark_int4_20260331_111033.csv/.json`
+
+### Comparison with GGUF Q4_K_M (same model, same quantization level)
+
+| Backend | Tok/s | VRAM (MB) | Load |
+|---------|-------|-----------|------|
+| llama.cpp GGUF Q4_K_M | 35.7 | 2711 | fast |
+| bitsandbytes NF4 INT4 | 12.2 | 2361 | 6.7s |
+
+**Why GGUF is ~3x faster:**
+llama.cpp has hand-written CUDA kernels optimized for quantized matrix-vector multiplication.
+bitsandbytes dequantizes weights to fp16 first, then runs standard GEMM — extra step,
+lower throughput. bitsandbytes is designed for QLoRA training, not pure inference speed.
+
+**Why bitsandbytes uses less VRAM:**
+Double quantization saves ~350MB vs GGUF Q4_K_M (2361 vs 2711 MB).
+
+---
+
 ## TODO — Upcoming Stages
-
-### Stage 4: Write benchmark script
-- Python script that runs same prompt through multiple quant levels
-- Measures TTFT, tokens/sec, VRAM
-- Saves results to results/
-
-### Stage 5: bitsandbytes INT4
-- Install PyTorch + bitsandbytes
-- Load HuggingFace model in 4-bit on the fly
-- Compare quality vs GGUF Q4
 
 ### Stage 6: AWQ
 - Install autoawq
-- Download AWQ quantized model from HuggingFace
+- Download pre-quantized AWQ model from HuggingFace
+- Write `scripts/benchmark_awq.py`
 - Compare with GGUF and bitsandbytes
 
 ### Stage 7: Results analysis
